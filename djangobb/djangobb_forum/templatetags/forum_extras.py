@@ -257,6 +257,16 @@ def attachment_link(attach):
 
 
 @register.simple_tag
+def user_display_name(user):
+    if forum_settings.USER_DISPLAY == 'email':
+        return user.email
+    elif forum_settings.USER_DISPLAY == 'fullname':
+        return '%s %s' % (user.first_name, user.last_name,)
+    else:
+        return user.email
+
+
+@register.simple_tag
 def new_reports():
     return Report.objects.filter(zapped=False).count()
 
