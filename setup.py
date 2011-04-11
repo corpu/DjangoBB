@@ -1,5 +1,7 @@
 from distutils.core import setup
 
+import setuptools
+
 # TODO: This setup script currently creates two redundant packages - djangobb and djangobb_forum that are identical
 
 setup(name='djangobb_forum',
