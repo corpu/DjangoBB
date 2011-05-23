@@ -15,6 +15,7 @@ from django.utils import translation
 from django.utils.encoding import smart_str
 from django.views.decorators.http import require_POST
 from django.db import transaction
+from django.views.decorators.csrf import csrf_exempt
 
 from djangobb_forum.util import render_to, paged, build_form, paginate, set_language
 from djangobb_forum.models import Category, Forum, Topic, Post, Profile, Reputation,\
@@ -138,7 +139,7 @@ def search(request):
         elif action == 'show_unanswered':
             topics = topics.filter(post_count=1)
         elif action == 'show_subscriptions':
-            topics = topics.filter(subscribers__id=request.user_id)
+            topics = topics.filter(subscribers__id=request.user.id)
         elif action == 'show_user':
             user_id = request.GET['user_id']
             posts = Post.objects.filter(user__id=user_id)
@@ -157,7 +158,7 @@ def search(request):
             query = SearchQuerySet().models(Post)
 
             if author:
-                query = query.filter(author__id=author)
+                query = query.filter(author__username=author)
 
             if forum != u'0':
                 query = query.filter(forum__id=forum)
@@ -237,10 +238,10 @@ def misc(request):
             return HttpResponseRedirect(reverse('djangobb:index'))
 
     elif 'mail_to' in request.GET:
-        user = get_object_or_404(User, username=request.GET['mail_to'])
+        mailto = get_object_or_404(User, username=request.GET['mail_to'])
         form = MailToForm()
         return {'form':form,
-                'user': user,
+                'mailto': mailto,
                'TEMPLATE': 'forum/mail_to.html'
                }
 
@@ -276,7 +277,6 @@ def show_forum(request, forum_id, full=True):
 
 @transaction.commit_on_success
 @render_to('forum/topic.html')
-@paged('posts', forum_settings.TOPIC_PAGE_SIZE)
 def show_topic(request, topic_id, full=True):
     topic = get_object_or_404(Topic.objects.select_related(), pk=topic_id)
     if not topic.forum.category.has_access(request.user):
@@ -287,9 +287,19 @@ def show_topic(request, topic_id, full=True):
 
     if request.user.is_authenticated():
         topic.update_read(request.user)
-
-    posts = topic.posts.all().select_related()
-
+    #@paged can't be used in this view. (ticket #180)
+    #TODO: must be refactored (ticket #39)
+    from django.core.paginator import Paginator, EmptyPage, InvalidPage
+    try:
+        page = int(request.GET.get('page', 1))
+    except ValueError:
+        page = 1
+    paginator = Paginator(topic.posts.all().select_related(), forum_settings.TOPIC_PAGE_SIZE)
+    try:
+        page_obj = paginator.page(page)
+    except (InvalidPage, EmptyPage):
+        raise Http404
+    posts = page_obj.object_list
     users = set(post.user.id for post in posts)
     profiles = Profile.objects.filter(user__pk__in=users)
     profiles = dict((profile.user_id, profile) for profile in profiles)
@@ -298,11 +308,10 @@ def show_topic(request, topic_id, full=True):
         post.user.forum_profile = profiles[post.user.id]
 
     if forum_settings.REPUTATION_SUPPORT:
-        replies_list = Reputation.objects.filter(to_user__pk__in=users).values('to_user_id').annotate(sign=Sum('sign')) #values_list buggy?
-
+        replies_list = Reputation.objects.filter(to_user__pk__in=users).values('to_user_id').annotate(Sum('sign'))
         replies = {}
         for r in replies_list:
-            replies[r['to_user_id']] = r['sign']
+            replies[r['to_user_id']] = r['sign__sum']
 
         for post in posts:
             post.user.forum_profile.reply_total = replies.get(post.user.id, 0)
@@ -327,16 +336,21 @@ def show_topic(request, topic_id, full=True):
                 'form': form,
                 'moderator': moderator,
                 'subscribed': subscribed,
-                'paged_qs': posts,
+                'posts': posts,
                 'highlight_word': highlight_word,
+                
+                'page': page,
+                'page_obj': page_obj,
+                'pages': paginator.num_pages,
+                'results_per_page': paginator.per_page,
+                'is_paginated': page_obj.has_other_pages(),
                 }
     else:
-        pages, paginator, paged_list_name = paginate(posts, request, forum_settings.TOPIC_PAGE_SIZE)
         return {'categories': Category.objects.all(),
                 'topic': topic,
-                'pages': pages,
+                'pages': paginator.num_pages,
                 'paginator': paginator,
-                'posts': paged_list_name,
+                'posts': posts,
                 'TEMPLATE': 'forum/lofi/topic.html'
                 }
 
@@ -484,7 +498,7 @@ def user(request, username):
                     'form': form,
                     'TEMPLATE': 'forum/profile/profile_essentials.html'
                    }
-
+        raise Http404
     else:
         topic_count = Topic.objects.filter(user__id=user.id).count()
         if user.forum_profile.post_count < forum_settings.POST_USER_SEARCH and not request.user.is_authenticated():
@@ -733,7 +747,7 @@ def delete_subscription(request, topic_id):
     if 'from_topic' in request.GET:
         return HttpResponseRedirect(reverse('djangobb:topic', args=[topic.id]))
     else:
-        return HttpResponseRedirect(reverse('djangobb:edit_profile'))
+        return HttpResponseRedirect(reverse('djangobb:forum_profile', args=[request.user.username]))
 
 
 @login_required
@@ -754,7 +768,7 @@ def show_attachment(request, hash):
 
 
 @login_required
-#@require_POST
+@csrf_exempt
 @render_to('forum/post_preview.html')
 def post_preview(request):
     '''Preview for markitup'''

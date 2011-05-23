@@ -60,28 +60,27 @@ def pagination(context, adjacent_pages=1):
     """
     Return the list of A tags with links to pages.
     """
-
-    page_list = range(
+    page_range = range(
         max(1, context['page'] - adjacent_pages),
         min(context['pages'], context['page'] + adjacent_pages) + 1)
-    lower_page = None
-    higher_page = None
+    previous = None
+    next = None
 
     if not 1 == context['page']:
-        lower_page = context['page'] - 1
+        previous = context['page'] - 1
 
-    if not 1 in page_list:
-        page_list.insert(0,1)
-        if not 2 in page_list:
-            page_list.insert(1,'.')
+    if not 1 in page_range:
+        page_range.insert(0,1)
+        if not 2 in page_range:
+            page_range.insert(1,'.')
 
     if not context['pages'] == context['page']:
-        higher_page = context['page'] + 1
+        next = context['page'] + 1
 
-    if not context['pages'] in page_list:
-        if not context['pages'] - 1 in page_list:
-            page_list.append('.')
-        page_list.append(context['pages'])
+    if not context['pages'] in page_range:
+        if not context['pages'] - 1 in page_range:
+            page_range.append('.')
+        page_range.append(context['pages'])
     get_params = '&'.join(['%s=%s' % (x[0], x[1]) for x in
         context['request'].GET.iteritems() if (x[0] != 'page' and x[0] != 'per_page')])
     if get_params:
@@ -91,18 +90,19 @@ def pagination(context, adjacent_pages=1):
 
     return {
         'get_params': get_params,
-        'lower_page': lower_page,
-        'higher_page': higher_page,
+        'previous': previous,
+        'next': next,
         'page': context['page'],
         'pages': context['pages'],
-        'page_list': page_list,
-        'per_page': context['per_page'],
+        'page_range': page_range,
+        'results_per_page': context['results_per_page'],
+        'is_paginated': context['is_paginated'],
         }
 
 
 @register.inclusion_tag('forum/lofi/pagination.html',takes_context=True)
 def lofi_pagination(context):
-    page_list = range(1, context['pages'] + 1)
+    page_range = range(1, context['pages'] + 1)
     paginator = context['paginator']
     
     get_params = '&'.join(['%s=%s' % (x[0],','.join(x[1])) for x in
@@ -114,7 +114,7 @@ def lofi_pagination(context):
         
     return {
             'get_params': get_params,
-            'page_list': page_list,
+            'page_range': page_range,
             'paginator': paginator,
             } 
 
@@ -136,9 +136,9 @@ def lofi_link(object, anchor=u''):
     Return A tag with lofi_link to object.
     """
 
-    url = hasattr(object,'get_absolute_url') and object.get_absolute_url() or None   
+    url = hasattr(object,'get_absolute_url') and object.get_absolute_url() or None
     anchor = anchor or smart_unicode(object)
-    return mark_safe('<a href="%slofi">%s</a>' % (url, escape(anchor)))
+    return mark_safe('<a href="%slofi/">%s</a>' % (url, escape(anchor)))
 
 
 @register.filter
@@ -205,27 +205,27 @@ def forum_equal_to(obj1, obj2):
 def forum_authority(user):
     posts = user.forum_profile.post_count
     if posts >= forum_settings.AUTHORITY_STEP_10: 
-        return mark_safe('<img src="%sforum/img/authority/vote10.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote10.gif" alt="" />' % (settings.MEDIA_URL))
     elif posts >= forum_settings.AUTHORITY_STEP_9: 
-        return mark_safe('<img src="%sforum/img/authority/vote9.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote9.gif" alt="" />' % (settings.MEDIA_URL))
     elif posts >= forum_settings.AUTHORITY_STEP_8: 
-        return mark_safe('<img src="%sforum/img/authority/vote8.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote8.gif" alt="" />' % (settings.MEDIA_URL))
     elif posts >= forum_settings.AUTHORITY_STEP_7: 
-        return mark_safe('<img src="%sforum/img/authority/vote7.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote7.gif" alt="" />' % (settings.MEDIA_URL))
     elif posts >= forum_settings.AUTHORITY_STEP_6: 
-        return mark_safe('<img src="%sforum/img/authority/vote6.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote6.gif" alt="" />' % (settings.MEDIA_URL))
     elif posts >= forum_settings.AUTHORITY_STEP_5: 
-        return mark_safe('<img src="%sforum/img/authority/vote5.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote5.gif" alt="" />' % (settings.MEDIA_URL))
     elif posts >= forum_settings.AUTHORITY_STEP_4: 
-        return mark_safe('<img src="%sforum/img/authority/vote4.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote4.gif" alt="" />' % (settings.MEDIA_URL))
     elif posts >= forum_settings.AUTHORITY_STEP_3: 
-        return mark_safe('<img src="%sforum/img/authority/vote3.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote3.gif" alt="" />' % (settings.MEDIA_URL))
     elif posts >= forum_settings.AUTHORITY_STEP_2: 
-        return mark_safe('<img src="%sforum/img/authority/vote2.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote2.gif" alt="" />' % (settings.MEDIA_URL))
     elif posts >= forum_settings.AUTHORITY_STEP_1: 
-        return mark_safe('<img src="%sforum/img/authority/vote1.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote1.gif" alt="" />' % (settings.MEDIA_URL))
     else:
-        return mark_safe('<img src="%sforum/img/authority/vote0.gif" alt="" >' % (settings.MEDIA_URL))
+        return mark_safe('<img src="%sforum/img/authority/vote0.gif" alt="" />' % (settings.MEDIA_URL))
 
     
 @register.filter
@@ -243,15 +243,15 @@ def pm_unreads(user):
 def attachment_link(attach):
     from django.template.defaultfilters import filesizeformat
     if attach.content_type in ['image/png', 'image/gif', 'image/jpeg']:
-        img = '<img src="%sforum/img/attachment/image.png" alt="attachment" >' % (settings.MEDIA_URL)
+        img = '<img src="%sforum/img/attachment/image.png" alt="attachment" />' % (settings.MEDIA_URL)
     elif attach.content_type in ['application/x-tar', 'application/zip']:
-        img = '<img src="%sforum/img/attachment/compress.png" alt="attachment" >' % (settings.MEDIA_URL)
+        img = '<img src="%sforum/img/attachment/compress.png" alt="attachment" />' % (settings.MEDIA_URL)
     elif attach.content_type in ['text/plain']:
-        img = '<img src="%sforum/img/attachment/text.png" alt="attachment" >' % (settings.MEDIA_URL)
+        img = '<img src="%sforum/img/attachment/text.png" alt="attachment" />' % (settings.MEDIA_URL)
     elif attach.content_type in ['application/msword']:
-        img = '<img src="%sforum/img/attachment/doc.png" alt="attachment" >' % (settings.MEDIA_URL)
+        img = '<img src="%sforum/img/attachment/doc.png" alt="attachment" />' % (settings.MEDIA_URL)
     else:
-        img = '<img src="%sforum/img/attachment/unknown.png" alt="attachment" >' % (settings.MEDIA_URL)
+        img = '<img src="%sforum/img/attachment/unknown.png" alt="attachment" />' % (settings.MEDIA_URL)
     attachment = '%s <a href="%s">%s</a> (%s)' % (img, attach.get_absolute_url(), attach.name, filesizeformat(attach.size))
     return mark_safe(attachment)
 
@@ -275,13 +275,12 @@ def new_reports():
 def gravatar(email):
     if forum_settings.GRAVATAR_SUPPORT:
         size = max(forum_settings.AVATAR_WIDTH, forum_settings.AVATAR_HEIGHT)
-        url = "http://www.gravatar.com/avatar.php?"
+        url = "http://www.gravatar.com/avatar/%s?" % md5_constructor(email.lower()).hexdigest()
         url += urllib.urlencode({
-            'gravatar_id': md5_constructor(email.lower()).hexdigest(),
             'size': size,
             'default': forum_settings.GRAVATAR_DEFAULT,
         })
-        return url
+        return url.replace('&', '&amp;')
     else:
         return ''
 

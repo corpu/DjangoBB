@@ -25,7 +25,7 @@
 	WIDTH: 0;
 	LINE-HEIGHT: 0;
 	FONT-SIZE: 0;
-	OVERFLOW: hidden
+	OVERFLOW: hidden;
 }
 
 .djangobb .clearer, .djangobb .clearb {CLEAR: both}
@@ -261,6 +261,7 @@ DIV.txtarea {WIDTH: 75%}
 /* 10.3 Other templates */
 
 #djangobbredirect DIV.block, #djangobbmaint DIV.block {MARGIN: 50px 20% 12px 20%}
+.lofi { text-align: center; }
 
 /****************************************************************/
 /* MOD QUICK QUOTE STYLE INDICATORS */
@@ -380,6 +381,7 @@ width:88px;
 
 #registration_form {
 	float: left;
+	width: 500px;
 }
 
 div.box {

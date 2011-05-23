@@ -9,9 +9,10 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils.translation import ugettext as _
 
+from postmarkup import render_bbcode
+
 from djangobb_forum.models import Topic, Post, Profile, Reputation, Report, \
     Forum, Attachment, TZ_CHOICES, PRIVACY_CHOICES
-from djangobb_forum.markups import bbmarkup
 from djangobb_forum import settings as forum_settings
 from djangobb_forum.util import convert_text_to_html
 
@@ -73,13 +74,30 @@ class AddPostForm(forms.ModelForm):
             self.fields['attachment'].widget = forms.HiddenInput()
             self.fields['attachment'].required = False
 
+    def clean(self):
+        '''
+        checking is post subject and body contains not only space characters
+        '''
+        errmsg = _('Can\'t be empty nor contain only whitespace characters')
+        cleaned_data = self.cleaned_data
+        body = cleaned_data.get('body')
+        subject = cleaned_data.get('name')
+        if subject:
+            if not subject.strip():
+                self._errors['name'] = self.error_class([errmsg])
+                del cleaned_data['name']
+        if body:
+            if not body.strip():
+                self._errors['body'] = self.error_class([errmsg])
+                del cleaned_data['body']
+        return cleaned_data
+
     def clean_attachment(self):
         if self.cleaned_data['attachment']:
             memfile = self.cleaned_data['attachment']
             if memfile.size > forum_settings.ATTACHMENT_SIZE_LIMIT:
                 raise forms.ValidationError(_('Attachment is too big'))
             return self.cleaned_data['attachment']
-
 
     def save(self):
         if self.forum:

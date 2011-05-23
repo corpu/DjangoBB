@@ -37,18 +37,21 @@ TIME_ZONE = 'Europe/Kiev'
 LANGUAGE_CODE = 'en-us'
 
 LANGUAGES = (
+    ('ca', 'Catalan'),
+    ('cs', 'Czech'),
+    ('de', 'German'),
     ('en', 'English'),
     ('es', 'Spanish'),
+    ('fo', 'Faroese'),
     ('fr', 'France'),
+    ('it', 'Italian'),
     ('lt', 'Lithuanian'),
+    ('mn', 'Mongolian'),
     ('pl', 'Polish'),
     ('ru', 'Russian'),
-    ('zh_CN', 'Chinese'),
-    ('de', 'German'),
+    ('uk_UA', 'Ukrainian'),
     ('vi', 'Vietnamese'),
-    ('it', 'Italian'),
-    ('cs', 'Czech'),
-    ('ca', 'Catalan'),
+    ('zh_CN', 'Chinese'),
 )
 
 SITE_ID = 1
@@ -100,10 +103,9 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.cache.UpdateCacheMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.locale.LocaleMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.middleware.csrf.CsrfResponseMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django_authopenid.middleware.OpenIDMiddleware',
     'django.middleware.cache.FetchFromCacheMiddleware',
     'django.middleware.transaction.TransactionMiddleware',

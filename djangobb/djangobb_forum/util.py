@@ -3,6 +3,7 @@ import os.path
 import random
 import re
 from HTMLParser import HTMLParser
+from postmarkup import render_bbcode
 try:
     import markdown
 except ImportError:
@@ -21,7 +22,6 @@ from django.contrib.sites.models import Site
 from django.conf import settings
 
 from djangobb_forum import settings as forum_settings
-from djangobb_forum.markups import bbmarkup
 
 #compile smiles regexp
 _SMILES = [(re.compile(smile_re), path) for smile_re, path in forum_settings.SMILES]
@@ -113,13 +113,16 @@ def paged(paged_list_name, per_page):
             from django.core.paginator import Paginator
             paginator = Paginator(result['paged_qs'], real_per_page)
             try:
-                result[paged_list_name] = paginator.page(page).object_list
+                page_obj = paginator.page(page)
             except (InvalidPage, EmptyPage):
                 raise Http404
+            result[paged_list_name] = page_obj.object_list
+            result['is_paginated'] = page_obj.has_other_pages(),
+            result['page_obj'] = page_obj,
             result['page'] = page
-            result['page_list'] = range(1, paginator.num_pages + 1)
+            result['page_range'] = paginator.page_range,
             result['pages'] = paginator.num_pages
-            result['per_page'] = real_per_page
+            result['results_per_page'] = paginator.per_page,
             result['request'] = request
             return result
         return wrapper
@@ -190,7 +193,7 @@ class ExcludeTagsHTMLParser(HTMLParser):
         Class for html parsing with excluding specified tags.
         """
 
-        def __init__(self, func, tags=('a', 'code')):
+        def __init__(self, func, tags=('a', 'pre', 'span')):
             HTMLParser.__init__(self)
             self.func = func
             self.is_ignored = False
@@ -283,16 +286,14 @@ def set_language(request, language):
     Change the language of session of authenticated user.
     """
 
-    if language and check_for_language(language):
-        if hasattr(request, 'session'):
-            request.session['django_language'] = language
-        else:
-            response.set_cookie(settings.LANGUAGE_COOKIE_NAME, language) 
+    if check_for_language(language):
+        request.session['django_language'] = language
+
 
 def convert_text_to_html(text, markup):
     if markup == 'bbcode':
-        text = bbmarkup.bbcode(text)
-    elif markup == 'markdown':            
+        text = render_bbcode(text)
+    elif markup == 'markdown':
         text = markdown.markdown(text, safe_mode='escape')
     else:
         raise Exception('Invalid markup property: %s' % markup)
